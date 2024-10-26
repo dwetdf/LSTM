@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPU and Memory Usage Prediction</title>
+    <script src="{{ url_for('static', filename='socket.io.js') }}"></script>
+    <script src="{{ url_for('static', filename='moment.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='chart.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='chartjs-adapter-moment.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='chartjs-plugin-streaming.min.js') }}"></script>
+</head>
+<body>
+    <h1>Real-time CPU and Memory Usage Prediction</h1>
+    <div style="width: 80%; margin: auto;">
+        <canvas id="usageChart" width="400" height="200"></canvas>
+    </div>
+
+    <script>
+        window.onload = function() {
+            const socket = io();
+            const ctx = document.getElementById('usageChart').getContext('2d');
+
+            const chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Current CPU Usage',
+                        data: [],
+                        borderColor: 'blue',
+                        fill: false
+                    }, {
+                        label: 'Predicted CPU Usage',
+                        data: [],
+                        borderColor: 'lightblue',
+                        fill: false
+                    }, {
+                        label: 'Current Memory Usage',
+                        data: [],
+                        borderColor: 'red',
+                        fill: false
+                    }, {
+                        label: 'Predicted Memory Usage',
+                        data: [],
+                        borderColor: 'pink',
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            type: 'realtime',
+                            realtime: {
+                                duration: 20000,
+                                refresh: 1000,
+                                delay: 2000,
+                                onRefresh: chart => {
+                                    chart.data.datasets.forEach(dataset => {
+                                        dataset.data.push({
+                                            x: Date.now(),
+                                            y: dataset.data.length > 0 ? dataset.data[dataset.data.length - 1].y : 0
+                                        });
+                                    });
+                                }
+                            },
+                            time: {
+                                unit: 'second'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Usage (%)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'CPU and Memory Usage'
+                        }
+                    }
+                }
+            });
+
+            socket.on('update_data', function(data) {
+                chart.data.datasets[0].data.push({
+                    x: Date.now(),
+                    y: data.current_cpu
+                });
+                chart.data.datasets[1].data.push({
+                    x: Date.now(),
+                    y: data.predicted_cpu
+                });
+                chart.data.datasets[2].data.push({
+                    x: Date.now(),
+                    y: data.current_memory
+                });
+                chart.data.datasets[3].data.push({
+                    x: Date.now(),
+                    y: data.predicted_memory
+                });
+            });
+        };
+    </script>
+</body>
+</html>

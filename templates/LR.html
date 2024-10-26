@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPU and Memory Usage Prediction</title>
+    <script src="{{ url_for('static', filename='socket.io.js') }}"></script>
+    <script src="{{ url_for('static', filename='moment.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='chart.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='chartjs-adapter-moment.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='chartjs-plugin-streaming.min.js') }}"></script>
+    <style>
+        .chart-container {
+            display: flex;
+            justify-content: space-between;
+            width: 95%;
+            margin: auto;
+        }
+        .chart {
+            width: 48%;
+            height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center;">Real-time CPU and Memory Usage Prediction</h1>
+    <div class="chart-container">
+        <div class="chart">
+            <canvas id="cpuChart"></canvas>
+        </div>
+        <div class="chart">
+            <canvas id="memoryChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            const socket = io();
+            const ctxCPU = document.getElementById('cpuChart').getContext('2d');
+            const ctxMemory = document.getElementById('memoryChart').getContext('2d');
+
+            const createChart = (ctx, label, color, predictedColor) => {
+                return new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: `Current ${label} Usage`,
+                            data: [],
+                            borderColor: color,
+                            fill: false
+                        }, {
+                            label: `Predicted ${label} Usage`,
+                            data: [],
+                            borderColor: predictedColor,
+                            fill: false
+                        }]
+                     },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                         x: {
+                            type: 'realtime',
+                            realtime: {
+                                duration: 20000,
+                                refresh: 1000,
+                                delay: 2000,
+                                onRefresh: chart => {
+                                    chart.data.datasets.forEach(dataset => {
+                                        dataset.data.push({
+                                            x: Date.now(),
+                                            y: dataset.data.length > 0 ? dataset.data[dataset.data.length - 1].y : 0
+                                        });
+                                    });
+                                }
+                            },
+                            time: {
+                                unit: 'second'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                stepSize: 10,
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Usage (%)'
+                            }   
+                        }
+                    },
+                    plugins: {
+                    title: {
+                        display: true,
+                        text: `${label} Usage`
+                    }
+                }
+            }
+        });
+    };
+
+            const cpuChart = createChart(ctxCPU, 'CPU', 'blue', 'lightblue');
+            const memoryChart = createChart(ctxMemory, 'Memory', 'red', 'pink');
+
+            socket.on('update_data', function(data) {
+                cpuChart.data.datasets[0].data.push({
+                    x: Date.now(),
+                    y: data.current_cpu
+                });
+                cpuChart.data.datasets[1].data.push({
+                    x: Date.now(),
+                    y: data.predicted_cpu
+                });
+
+                memoryChart.data.datasets[0].data.push({
+                    x: Date.now(),
+                    y: data.current_memory
+                });
+                memoryChart.data.datasets[1].data.push({
+                    x: Date.now(),
+                    y: data.predicted_memory
+                });
+            });
+        };
+    </script>
+</body>
+</html>
