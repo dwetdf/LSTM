@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 import time
 import psutil
-from cpu_train import LSTMModel
+from train import LSTMModel
 
 def load_model(model_path, input_size, hidden_size, num_layers, output_size):
     model = LSTMModel(input_size, hidden_size, num_layers, output_size)

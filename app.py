@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import time
 import psutil
-from cpu_train import LSTMModel 
+from train import LSTMModel 
 
 app = Flask(__name__)
 socketio = SocketIO(app)
